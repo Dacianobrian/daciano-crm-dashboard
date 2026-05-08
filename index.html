@@ -90,7 +90,7 @@
 
     .kpis {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin-bottom: 18px;
     }
@@ -251,13 +251,15 @@
       white-space: nowrap;
     }
 
-    .rate-grid {
+    .rate-grid,
+    .need-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
     }
 
-    .rate-card {
+    .rate-card,
+    .need-card {
       min-height: 98px;
       border-radius: 8px;
       background: var(--surface-2);
@@ -267,21 +269,24 @@
       justify-content: space-between;
     }
 
-    .rate-label {
+    .rate-label,
+    .need-label {
       color: var(--muted);
       font-size: 12px;
       font-weight: 800;
       text-transform: uppercase;
     }
 
-    .rate-value {
+    .rate-value,
+    .need-value {
       color: var(--text);
       font-size: 28px;
       font-weight: 850;
       line-height: 1;
     }
 
-    .rate-base {
+    .rate-base,
+    .need-base {
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
@@ -407,7 +412,8 @@
         grid-row: 2;
       }
 
-      .rate-grid {
+      .rate-grid,
+      .need-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -418,7 +424,7 @@
     <header>
       <div>
         <h1>Dashboard CRM - Daciano Brian</h1>
-        <p class="subtitle">Leads do ClickUp CRM, calculados pelo status atual e pela data de atualização no fuso America/Sao_Paulo.</p>
+        <p class="subtitle">Leads do ClickUp CRM. Chamados conta os leads trabalhados no período, mesmo quando depois viraram descarte, docs ou análise.</p>
       </div>
       <div class="filters">
         <label>
@@ -427,7 +433,7 @@
             <option value="today">Hoje, 08/05/2026</option>
             <option value="week">Semana, 04/05 a 10/05</option>
             <option value="month">Mês, maio/2026</option>
-            <option value="all">Todo o snapshot</option>
+            <option value="all">Snapshot revisado</option>
           </select>
         </label>
         <label>
@@ -436,6 +442,7 @@
             <option value="all">Todas</option>
             <option value="CRM">CRM M&C</option>
             <option value="Docs">Docs p/ Análise</option>
+            <option value="Vendas">Vendas M&C</option>
           </select>
         </label>
       </div>
@@ -443,9 +450,9 @@
 
     <div class="kpis">
       <article class="kpi">
-        <div class="label">Leads chamados</div>
+        <div class="label">Leads chamados / trabalhados</div>
         <div class="value" id="kpiContacted">0</div>
-        <div class="hint">Status com tentativa de contato.</div>
+        <div class="hint">Leads movimentados no CRM no período.</div>
       </article>
       <article class="kpi">
         <div class="label">Movidos para sondagem</div>
@@ -465,7 +472,22 @@
       <article class="kpi">
         <div class="label">Análise de crédito</div>
         <div class="value" id="kpiCredito">0</div>
-        <div class="hint">Leads na lista Docs p/ Análise.</div>
+        <div class="hint">Status em análise, SCR ou lista Docs.</div>
+      </article>
+      <article class="kpi">
+        <div class="label">Aprovados</div>
+        <div class="value" id="kpiApproved">0</div>
+        <div class="hint">Aprovado integral ou condicionado.</div>
+      </article>
+      <article class="kpi">
+        <div class="label">Vendas</div>
+        <div class="value" id="kpiSales">0</div>
+        <div class="hint">Venda realizada, recebido ou NF.</div>
+      </article>
+      <article class="kpi">
+        <div class="label">Perdas / descartes</div>
+        <div class="value" id="kpiLost">0</div>
+        <div class="hint">Descartado, reprovação, restrição ou distrato.</div>
       </article>
     </div>
 
@@ -482,6 +504,7 @@
           <div class="summary-item"><span id="summaryDiscardedLabel">Descartados hoje</span><strong id="summaryDiscarded">0</strong></div>
           <div class="summary-item"><span>CRM principal</span><strong id="summaryCrm">0</strong></div>
           <div class="summary-item"><span>Docs p/ Análise</span><strong id="summaryDocsList">0</strong></div>
+          <div class="summary-item"><span>Vendas M&C</span><strong id="summarySalesList">0</strong></div>
         </div>
       </section>
     </div>
@@ -519,6 +542,11 @@
     </div>
 
     <section>
+      <h2>Conversão por Etapa</h2>
+      <div class="need-grid" id="conversionNeeds"></div>
+    </section>
+
+    <section>
       <h2>Leads Recentes</h2>
       <div class="table-wrap">
         <table>
@@ -538,7 +566,7 @@
     </section>
 
     <footer>
-      Fonte: ClickUp, pasta M&amp;C - Daciano Brian. Snapshot gerado em 08/05/2026; os filtros consideram a data de atualização em America/Sao_Paulo. Os KPIs e gráficos usam os totais puxados do ClickUp; a tabela mostra os leads recentes dentro do período selecionado.
+      Fonte: ClickUp, pasta M&amp;C - Daciano Brian. Snapshot revisado em 08/05/2026; os filtros consideram a data de atualização em America/Sao_Paulo. Para conversão histórica perfeita, o próximo passo é salvar snapshots diários por ID do lead.
     </footer>
   </main>
 
@@ -548,6 +576,7 @@
     const WEEK_END = "2026-05-10";
     const MONTH_PREFIX = "2026-05";
     const LEADS = [
+      { name: "Bruna", status: "em análise de crédito", list: "CRM", updated: "2026-05-08 15:26:20", assignee: "Daciano Brian", url: "https://app.clickup.com/t/86ag48pye" },
       { name: "Renata", status: "aguardando docs", list: "CRM", updated: "2026-05-08 14:48:10", assignee: "Daciano Brian", url: "https://app.clickup.com/t/86ah8g614" },
       { name: "Lenita", status: "descartado", list: "CRM", updated: "2026-05-08 14:43:59", assignee: "-", url: "https://app.clickup.com/t/86afj965q" },
       { name: "Heloina", status: "descartado", list: "CRM", updated: "2026-05-08 14:42:32", assignee: "-", url: "https://app.clickup.com/t/86af8m4kb" },
@@ -570,14 +599,16 @@
 
     const STATUS_TOTALS = {
       CRM: {
-        "descartado": 74,
+        "descartado": 73,
         "analise documental concluida": 4,
+        "em analise de credito": 1,
         "aguardando docs": 1,
         "tentando 1 contato": 1
       },
       Docs: {
         "scr bacen": 43,
         "aprovado integral": 14,
+        "aprovado condicionado": 5,
         "restricao (so regularizar)": 12,
         "reprovado por margem": 3,
         "pendencia docs": 2,
@@ -585,6 +616,13 @@
         "reprovado por rating": 2,
         "pend. receita": 1,
         "restricao caixa": 1
+      },
+      Vendas: {
+        "recebido": 17,
+        "vendas realizadas": 9,
+        "distrato": 10,
+        "nf gerada": 3,
+        "nf parcial recebida": 5
       }
     };
 
@@ -643,7 +681,7 @@
       const list = document.getElementById("listFilter").value;
       if (period === "all") {
         const totals = {};
-        const lists = list === "all" ? ["CRM", "Docs"] : [list];
+        const lists = list === "all" ? Object.keys(STATUS_TOTALS) : [list];
         lists.forEach(listName => {
           Object.entries(STATUS_TOTALS[listName]).forEach(([status, count]) => {
             totals[status] = (totals[status] || 0) + count;
@@ -668,39 +706,67 @@
       const list = document.getElementById("listFilter").value;
       const fullCrm = Object.values(STATUS_TOTALS.CRM).reduce((sum, count) => sum + count, 0);
       const fullDocs = Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
+      const fullSales = Object.values(STATUS_TOTALS.Vendas).reduce((sum, count) => sum + count, 0);
       if (period !== "all") return rows.length;
       if (list === "CRM") return fullCrm;
       if (list === "Docs") return fullDocs;
-      return fullCrm + fullDocs;
+      if (list === "Vendas") return fullSales;
+      return fullCrm + fullDocs + fullSales;
     }
 
     function docsListTotal(rows) {
       const period = document.getElementById("periodFilter").value;
       const list = document.getElementById("listFilter").value;
       if (period === "all") {
-        if (list === "CRM") return 0;
+        if (list === "CRM" || list === "Vendas") return 0;
         return Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
       }
       return rows.filter(row => row.list === "Docs").length;
     }
 
+    function crmAnalysisTotal(rows) {
+      const period = document.getElementById("periodFilter").value;
+      const list = document.getElementById("listFilter").value;
+      const isCreditStatus = status => status.includes("analise") || status.includes("scr bacen");
+      if (period === "all") {
+        if (list === "Docs" || list === "Vendas") return 0;
+        return countMatchingStatuses(STATUS_TOTALS.CRM, isCreditStatus);
+      }
+      return rows.filter(row => {
+        const status = normalize(row.status);
+        return row.list === "CRM" && isCreditStatus(status);
+      }).length;
+    }
+
     function currentMetrics(rows) {
       const counts = statusCounts(rows);
       const total = totalForSelection(rows);
-      const contacted = countMatchingStatuses(counts, status => status.includes("contato"));
+      const contacted = total;
       const sondagem = countMatchingStatuses(counts, status => status.includes("sondagem"));
       const simulacao = countMatchingStatuses(counts, status => status.includes("simulacao"));
       const waitingDocs = countMatchingStatuses(counts, status => status.includes("docs") || status.includes("pendencia"));
-      const analysisStatus = countMatchingStatuses(counts, status => status.includes("analise"));
-      const credit = docsListTotal(rows) + analysisStatus;
+      const credit = docsListTotal(rows) + crmAnalysisTotal(rows);
       const approved = countMatchingStatuses(counts, status => status.includes("aprovado"));
-      const discarded = countMatchingStatuses(counts, status => status.includes("descartado"));
-      return { total, contacted, sondagem, simulacao, waitingDocs, credit, approved, discarded };
+      const sales = countMatchingStatuses(counts, status => status.includes("venda") || status.includes("recebido") || status.includes("nf"));
+      const discarded = countMatchingStatuses(counts, status => (
+        status.includes("descartado") ||
+        status.includes("reprovado") ||
+        status.includes("restricao") ||
+        status.includes("inviavel") ||
+        status.includes("distrato")
+      ));
+      return { total, contacted, sondagem, simulacao, waitingDocs, credit, approved, sales, discarded };
     }
 
     function percent(part, base) {
       if (!base) return "0%";
       return `${Math.round((part / base) * 100)}%`;
+    }
+
+    function oneIn(part, base) {
+      if (!base) return "sem base";
+      if (!part) return "sem conversão";
+      return `1 a cada ${Math.max(Math.round(base / part), 1)}`;
     }
 
     function ownerName(row) {
@@ -718,6 +784,9 @@
       document.getElementById("kpiSimulacao").textContent = metrics.simulacao;
       document.getElementById("kpiDocs").textContent = metrics.waitingDocs;
       document.getElementById("kpiCredito").textContent = metrics.credit;
+      document.getElementById("kpiApproved").textContent = metrics.approved;
+      document.getElementById("kpiSales").textContent = metrics.sales;
+      document.getElementById("kpiLost").textContent = metrics.discarded;
     }
 
     function renderBars(rows) {
@@ -743,6 +812,7 @@
       const list = document.getElementById("listFilter").value;
       const fullCrm = Object.values(STATUS_TOTALS.CRM).reduce((sum, count) => sum + count, 0);
       const fullDocs = Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
+      const fullSales = Object.values(STATUS_TOTALS.Vendas).reduce((sum, count) => sum + count, 0);
       const metrics = currentMetrics(rows);
       const periodLabels = {
         today: ["Movimentados hoje", "Descartados hoje"],
@@ -755,8 +825,9 @@
       document.getElementById("summaryTotal").textContent = metrics.total;
       document.getElementById("summaryToday").textContent = metrics.total;
       document.getElementById("summaryDiscarded").textContent = metrics.discarded;
-      document.getElementById("summaryCrm").textContent = period === "all" ? (list === "Docs" ? 0 : fullCrm) : rows.filter(row => row.list === "CRM").length;
-      document.getElementById("summaryDocsList").textContent = period === "all" ? (list === "CRM" ? 0 : fullDocs) : rows.filter(row => row.list === "Docs").length;
+      document.getElementById("summaryCrm").textContent = period === "all" ? (list === "all" || list === "CRM" ? fullCrm : 0) : rows.filter(row => row.list === "CRM").length;
+      document.getElementById("summaryDocsList").textContent = period === "all" ? (list === "all" || list === "Docs" ? fullDocs : 0) : rows.filter(row => row.list === "Docs").length;
+      document.getElementById("summarySalesList").textContent = period === "all" ? (list === "all" || list === "Vendas" ? fullSales : 0) : rows.filter(row => row.list === "Vendas").length;
     }
 
     function renderFunnel(rows) {
@@ -768,7 +839,8 @@
         ["Simulação", metrics.simulacao, "#c77803"],
         ["Aguardando docs", metrics.waitingDocs, "#0f9f6e"],
         ["Análise crédito", metrics.credit, "#16a34a"],
-        ["Aprovados", metrics.approved, "#047857"]
+        ["Aprovados", metrics.approved, "#047857"],
+        ["Vendas", metrics.sales, "#0f766e"]
       ];
       const max = Math.max(metrics.total, 1);
       document.getElementById("funnelRows").innerHTML = stages.map(([name, count, color], index) => {
@@ -792,6 +864,25 @@
       document.getElementById("rateDiscardedBase").textContent = `${metrics.discarded} de ${metrics.total} leads`;
     }
 
+    function renderConversionNeeds(rows) {
+      const metrics = currentMetrics(rows);
+      const stages = [
+        ["Chamados -> Sondagem", metrics.sondagem, metrics.contacted, "leads chamados geram 1 sondagem"],
+        ["Sondagem -> Simulação", metrics.simulacao, metrics.sondagem, "sondagens geram 1 simulação"],
+        ["Simulação -> Docs", metrics.waitingDocs, metrics.simulacao, "simulações geram 1 lead em docs"],
+        ["Docs -> Análise", metrics.credit, metrics.waitingDocs, "leads em docs geram 1 análise"],
+        ["Análise -> Aprovado", metrics.approved, metrics.credit, "análises geram 1 aprovação"],
+        ["Aprovado -> Venda", metrics.sales, metrics.approved, "aprovados geram 1 venda"]
+      ];
+      document.getElementById("conversionNeeds").innerHTML = stages.map(([label, part, base, hint]) => `
+        <div class="need-card">
+          <div class="need-label">${label}</div>
+          <div class="need-value">${oneIn(part, base)}</div>
+          <div class="need-base">${percent(part, base)} · ${part} de ${base}. ${hint}.</div>
+        </div>
+      `).join("");
+    }
+
     function renderTable(rows) {
       const sorted = [...rows].sort((a, b) => b.updated.localeCompare(a.updated));
       document.getElementById("leadRows").innerHTML = sorted.map(row => `
@@ -812,6 +903,7 @@
       renderBars(rows);
       renderSummary(rows);
       renderFunnel(rows);
+      renderConversionNeeds(rows);
       renderTable(rows);
     }
 
