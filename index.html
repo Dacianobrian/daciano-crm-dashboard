@@ -204,6 +204,89 @@
       font-size: 18px;
     }
 
+    .conversion-grid {
+      display: grid;
+      grid-template-columns: 1fr 0.8fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .funnel-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .funnel-row {
+      display: grid;
+      grid-template-columns: minmax(150px, 210px) 1fr minmax(86px, auto);
+      gap: 12px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .funnel-name {
+      color: #344054;
+      font-weight: 700;
+    }
+
+    .funnel-track {
+      position: relative;
+      height: 28px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface-2);
+    }
+
+    .funnel-fill {
+      height: 100%;
+      border-radius: 8px;
+      background: var(--green);
+      min-width: 2px;
+    }
+
+    .funnel-value {
+      color: var(--muted);
+      font-weight: 800;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .rate-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .rate-card {
+      min-height: 98px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 13px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .rate-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .rate-value {
+      color: var(--text);
+      font-size: 28px;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .rate-base {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .table-wrap {
       overflow-x: auto;
     }
@@ -282,6 +365,10 @@
       .grid {
         grid-template-columns: 1fr;
       }
+
+      .conversion-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 620px) {
@@ -309,6 +396,19 @@
       .bar-track {
         grid-column: 1 / -1;
         grid-row: 2;
+      }
+
+      .funnel-row {
+        grid-template-columns: 1fr minmax(76px, auto);
+      }
+
+      .funnel-track {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+
+      .rate-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -386,6 +486,38 @@
       </section>
     </div>
 
+    <div class="conversion-grid">
+      <section>
+        <h2>Funil de Conversão</h2>
+        <div class="funnel-list" id="funnelRows"></div>
+      </section>
+      <section>
+        <h2>Taxas</h2>
+        <div class="rate-grid">
+          <div class="rate-card">
+            <div class="rate-label">Análise / Leads</div>
+            <div class="rate-value" id="rateCredit">0%</div>
+            <div class="rate-base" id="rateCreditBase">0 de 0</div>
+          </div>
+          <div class="rate-card">
+            <div class="rate-label">Aprovados / Análise</div>
+            <div class="rate-value" id="rateApproved">0%</div>
+            <div class="rate-base" id="rateApprovedBase">0 de 0</div>
+          </div>
+          <div class="rate-card">
+            <div class="rate-label">Docs / Leads</div>
+            <div class="rate-value" id="rateDocs">0%</div>
+            <div class="rate-base" id="rateDocsBase">0 de 0</div>
+          </div>
+          <div class="rate-card">
+            <div class="rate-label">Descartes / Leads</div>
+            <div class="rate-value" id="rateDiscarded">0%</div>
+            <div class="rate-base" id="rateDiscardedBase">0 de 0</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <section>
       <h2>Leads Recentes</h2>
       <div class="table-wrap">
@@ -457,6 +589,7 @@
     };
 
     const STATUS_COLORS = ["#2563eb", "#0f9f6e", "#c77803", "#c2410c", "#7c3aed", "#0891b2", "#be123c", "#475569"];
+    const OWNER_NAME = "Daciano Brian";
 
     function normalize(value) {
       return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -524,29 +657,67 @@
       }, {});
     }
 
+    function countMatchingStatuses(counts, matcher) {
+      return Object.entries(counts).reduce((sum, [status, count]) => {
+        return sum + (matcher(normalize(status)) ? count : 0);
+      }, 0);
+    }
+
+    function totalForSelection(rows) {
+      const period = document.getElementById("periodFilter").value;
+      const list = document.getElementById("listFilter").value;
+      const fullCrm = Object.values(STATUS_TOTALS.CRM).reduce((sum, count) => sum + count, 0);
+      const fullDocs = Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
+      if (period !== "all") return rows.length;
+      if (list === "CRM") return fullCrm;
+      if (list === "Docs") return fullDocs;
+      return fullCrm + fullDocs;
+    }
+
+    function docsListTotal(rows) {
+      const period = document.getElementById("periodFilter").value;
+      const list = document.getElementById("listFilter").value;
+      if (period === "all") {
+        if (list === "CRM") return 0;
+        return Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
+      }
+      return rows.filter(row => row.list === "Docs").length;
+    }
+
+    function currentMetrics(rows) {
+      const counts = statusCounts(rows);
+      const total = totalForSelection(rows);
+      const contacted = countMatchingStatuses(counts, status => status.includes("contato"));
+      const sondagem = countMatchingStatuses(counts, status => status.includes("sondagem"));
+      const simulacao = countMatchingStatuses(counts, status => status.includes("simulacao"));
+      const waitingDocs = countMatchingStatuses(counts, status => status.includes("docs") || status.includes("pendencia"));
+      const analysisStatus = countMatchingStatuses(counts, status => status.includes("analise"));
+      const credit = docsListTotal(rows) + analysisStatus;
+      const approved = countMatchingStatuses(counts, status => status.includes("aprovado"));
+      const discarded = countMatchingStatuses(counts, status => status.includes("descartado"));
+      return { total, contacted, sondagem, simulacao, waitingDocs, credit, approved, discarded };
+    }
+
+    function percent(part, base) {
+      if (!base) return "0%";
+      return `${Math.round((part / base) * 100)}%`;
+    }
+
+    function ownerName(row) {
+      return row.assignee && row.assignee !== "-" ? row.assignee : OWNER_NAME;
+    }
+
     function metric(rows, matcher) {
       return rows.filter(row => matcher(normalize(row.status), row)).length;
     }
 
     function renderKpis(rows) {
-      const period = document.getElementById("periodFilter").value;
-      const list = document.getElementById("listFilter").value;
-      if (period === "all") {
-        const counts = statusCounts(rows);
-        const sumMatching = matcher => Object.entries(counts).reduce((sum, [status, count]) => sum + (matcher(normalize(status)) ? count : 0), 0);
-        const docsTotal = list === "CRM" ? 0 : Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
-        document.getElementById("kpiContacted").textContent = sumMatching(status => status.includes("contato"));
-        document.getElementById("kpiSondagem").textContent = sumMatching(status => status.includes("sondagem"));
-        document.getElementById("kpiSimulacao").textContent = sumMatching(status => status.includes("simulacao"));
-        document.getElementById("kpiDocs").textContent = sumMatching(status => status.includes("docs") || status.includes("pendencia"));
-        document.getElementById("kpiCredito").textContent = docsTotal + sumMatching(status => status.includes("analise"));
-        return;
-      }
-      document.getElementById("kpiContacted").textContent = metric(rows, status => status.includes("contato"));
-      document.getElementById("kpiSondagem").textContent = metric(rows, status => status.includes("sondagem"));
-      document.getElementById("kpiSimulacao").textContent = metric(rows, status => status.includes("simulacao"));
-      document.getElementById("kpiDocs").textContent = metric(rows, status => status.includes("docs") || status.includes("pendencia"));
-      document.getElementById("kpiCredito").textContent = metric(rows, (status, row) => row.list === "Docs" || status.includes("analise"));
+      const metrics = currentMetrics(rows);
+      document.getElementById("kpiContacted").textContent = metrics.contacted;
+      document.getElementById("kpiSondagem").textContent = metrics.sondagem;
+      document.getElementById("kpiSimulacao").textContent = metrics.simulacao;
+      document.getElementById("kpiDocs").textContent = metrics.waitingDocs;
+      document.getElementById("kpiCredito").textContent = metrics.credit;
     }
 
     function renderBars(rows) {
@@ -572,11 +743,7 @@
       const list = document.getElementById("listFilter").value;
       const fullCrm = Object.values(STATUS_TOTALS.CRM).reduce((sum, count) => sum + count, 0);
       const fullDocs = Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
-      const total = period === "all" ? (list === "CRM" ? fullCrm : list === "Docs" ? fullDocs : fullCrm + fullDocs) : rows.length;
-      const counts = statusCounts(rows);
-      const discardedTotal = Object.entries(counts).reduce((sum, [status, count]) => {
-        return sum + (normalize(status).includes("descartado") ? count : 0);
-      }, 0);
+      const metrics = currentMetrics(rows);
       const periodLabels = {
         today: ["Movimentados hoje", "Descartados hoje"],
         week: ["Movimentados na semana", "Descartados na semana"],
@@ -585,11 +752,44 @@
       };
       document.getElementById("summaryPeriodLabel").textContent = periodLabels[period][0];
       document.getElementById("summaryDiscardedLabel").textContent = periodLabels[period][1];
-      document.getElementById("summaryTotal").textContent = total;
-      document.getElementById("summaryToday").textContent = total;
-      document.getElementById("summaryDiscarded").textContent = discardedTotal;
+      document.getElementById("summaryTotal").textContent = metrics.total;
+      document.getElementById("summaryToday").textContent = metrics.total;
+      document.getElementById("summaryDiscarded").textContent = metrics.discarded;
       document.getElementById("summaryCrm").textContent = period === "all" ? (list === "Docs" ? 0 : fullCrm) : rows.filter(row => row.list === "CRM").length;
       document.getElementById("summaryDocsList").textContent = period === "all" ? (list === "CRM" ? 0 : fullDocs) : rows.filter(row => row.list === "Docs").length;
+    }
+
+    function renderFunnel(rows) {
+      const metrics = currentMetrics(rows);
+      const stages = [
+        ["Leads trabalhados", metrics.total, "#2563eb"],
+        ["Chamados", metrics.contacted, "#0891b2"],
+        ["Sondagem", metrics.sondagem, "#7c3aed"],
+        ["Simulação", metrics.simulacao, "#c77803"],
+        ["Aguardando docs", metrics.waitingDocs, "#0f9f6e"],
+        ["Análise crédito", metrics.credit, "#16a34a"],
+        ["Aprovados", metrics.approved, "#047857"]
+      ];
+      const max = Math.max(metrics.total, 1);
+      document.getElementById("funnelRows").innerHTML = stages.map(([name, count, color], index) => {
+        const width = Math.max((count / max) * 100, count ? 4 : 0);
+        const previous = index === 0 ? metrics.total : stages[index - 1][1];
+        return `
+          <div class="funnel-row">
+            <div class="funnel-name">${name}</div>
+            <div class="funnel-track"><div class="funnel-fill" style="width:${width}%; background:${color}"></div></div>
+            <div class="funnel-value">${count} · ${percent(count, previous)}</div>
+          </div>
+        `;
+      }).join("");
+      document.getElementById("rateCredit").textContent = percent(metrics.credit, metrics.total);
+      document.getElementById("rateCreditBase").textContent = `${metrics.credit} de ${metrics.total} leads`;
+      document.getElementById("rateApproved").textContent = percent(metrics.approved, metrics.credit);
+      document.getElementById("rateApprovedBase").textContent = `${metrics.approved} de ${metrics.credit} em análise`;
+      document.getElementById("rateDocs").textContent = percent(metrics.waitingDocs, metrics.total);
+      document.getElementById("rateDocsBase").textContent = `${metrics.waitingDocs} de ${metrics.total} leads`;
+      document.getElementById("rateDiscarded").textContent = percent(metrics.discarded, metrics.total);
+      document.getElementById("rateDiscardedBase").textContent = `${metrics.discarded} de ${metrics.total} leads`;
     }
 
     function renderTable(rows) {
@@ -600,7 +800,7 @@
           <td><span class="pill ${statusClass(row.status)}">${row.status}</span></td>
           <td>${row.list}</td>
           <td>${row.updated}</td>
-          <td>${row.assignee}</td>
+          <td>${ownerName(row)}</td>
           <td><a href="${row.url}" target="_blank" rel="noreferrer">Abrir</a></td>
         </tr>
       `).join("");
@@ -611,6 +811,7 @@
       renderKpis(rows);
       renderBars(rows);
       renderSummary(rows);
+      renderFunnel(rows);
       renderTable(rows);
     }
 
