@@ -325,6 +325,8 @@
           Período
           <select id="periodFilter">
             <option value="today">Hoje, 08/05/2026</option>
+            <option value="week">Semana, 04/05 a 10/05</option>
+            <option value="month">Mês, maio/2026</option>
             <option value="all">Todo o snapshot</option>
           </select>
         </label>
@@ -341,7 +343,7 @@
 
     <div class="kpis">
       <article class="kpi">
-        <div class="label">Leads chamados no dia</div>
+        <div class="label">Leads chamados</div>
         <div class="value" id="kpiContacted">0</div>
         <div class="hint">Status com tentativa de contato.</div>
       </article>
@@ -376,8 +378,8 @@
         <h2>Resumo Operacional</h2>
         <div class="summary-list">
           <div class="summary-item"><span>Leads no filtro</span><strong id="summaryTotal">0</strong></div>
-          <div class="summary-item"><span>Movimentados hoje</span><strong id="summaryToday">0</strong></div>
-          <div class="summary-item"><span>Descartados hoje</span><strong id="summaryDiscarded">0</strong></div>
+          <div class="summary-item"><span id="summaryPeriodLabel">Movimentados hoje</span><strong id="summaryToday">0</strong></div>
+          <div class="summary-item"><span id="summaryDiscardedLabel">Descartados hoje</span><strong id="summaryDiscarded">0</strong></div>
           <div class="summary-item"><span>CRM principal</span><strong id="summaryCrm">0</strong></div>
           <div class="summary-item"><span>Docs p/ Análise</span><strong id="summaryDocsList">0</strong></div>
         </div>
@@ -404,12 +406,15 @@
     </section>
 
     <footer>
-      Fonte: ClickUp, pasta M&amp;C - Daciano Brian. Snapshot gerado em 08/05/2026; "hoje" considera atualizações entre 00:00 e 23:59 de 08/05/2026 em America/Sao_Paulo. Os KPIs e gráficos usam os totais puxados do ClickUp; a tabela mostra os leads recentes e todos os leads movimentados hoje.
+      Fonte: ClickUp, pasta M&amp;C - Daciano Brian. Snapshot gerado em 08/05/2026; os filtros consideram a data de atualização em America/Sao_Paulo. Os KPIs e gráficos usam os totais puxados do ClickUp; a tabela mostra os leads recentes dentro do período selecionado.
     </footer>
   </main>
 
   <script>
     const TODAY = "2026-05-08";
+    const WEEK_START = "2026-05-04";
+    const WEEK_END = "2026-05-10";
+    const MONTH_PREFIX = "2026-05";
     const LEADS = [
       { name: "Renata", status: "aguardando docs", list: "CRM", updated: "2026-05-08 14:48:10", assignee: "Daciano Brian", url: "https://app.clickup.com/t/86ah8g614" },
       { name: "Lenita", status: "descartado", list: "CRM", updated: "2026-05-08 14:43:59", assignee: "-", url: "https://app.clickup.com/t/86afj965q" },
@@ -461,6 +466,26 @@
       return row.updated.startsWith(TODAY);
     }
 
+    function updatedDate(row) {
+      return row.updated.slice(0, 10);
+    }
+
+    function isThisWeek(row) {
+      const date = updatedDate(row);
+      return date >= WEEK_START && date <= WEEK_END;
+    }
+
+    function isThisMonth(row) {
+      return row.updated.startsWith(MONTH_PREFIX);
+    }
+
+    function inSelectedPeriod(row, period) {
+      if (period === "all") return true;
+      if (period === "month") return isThisMonth(row);
+      if (period === "week") return isThisWeek(row);
+      return isToday(row);
+    }
+
     function statusClass(status) {
       const s = normalize(status);
       if (s.includes("contato")) return "blue";
@@ -474,7 +499,7 @@
       const period = document.getElementById("periodFilter").value;
       const list = document.getElementById("listFilter").value;
       return LEADS.filter(row => {
-        const periodOk = period === "all" || isToday(row);
+        const periodOk = inSelectedPeriod(row, period);
         const listOk = list === "all" || row.list === list;
         return periodOk && listOk;
       });
@@ -545,13 +570,24 @@
     function renderSummary(rows) {
       const period = document.getElementById("periodFilter").value;
       const list = document.getElementById("listFilter").value;
-      const allToday = LEADS.filter(isToday);
       const fullCrm = Object.values(STATUS_TOTALS.CRM).reduce((sum, count) => sum + count, 0);
       const fullDocs = Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
       const total = period === "all" ? (list === "CRM" ? fullCrm : list === "Docs" ? fullDocs : fullCrm + fullDocs) : rows.length;
+      const counts = statusCounts(rows);
+      const discardedTotal = Object.entries(counts).reduce((sum, [status, count]) => {
+        return sum + (normalize(status).includes("descartado") ? count : 0);
+      }, 0);
+      const periodLabels = {
+        today: ["Movimentados hoje", "Descartados hoje"],
+        week: ["Movimentados na semana", "Descartados na semana"],
+        month: ["Movimentados no mês", "Descartados no mês"],
+        all: ["Movimentados no snapshot", "Descartados no snapshot"]
+      };
+      document.getElementById("summaryPeriodLabel").textContent = periodLabels[period][0];
+      document.getElementById("summaryDiscardedLabel").textContent = periodLabels[period][1];
       document.getElementById("summaryTotal").textContent = total;
-      document.getElementById("summaryToday").textContent = allToday.length;
-      document.getElementById("summaryDiscarded").textContent = allToday.filter(row => normalize(row.status).includes("descartado")).length;
+      document.getElementById("summaryToday").textContent = total;
+      document.getElementById("summaryDiscarded").textContent = discardedTotal;
       document.getElementById("summaryCrm").textContent = period === "all" ? (list === "Docs" ? 0 : fullCrm) : rows.filter(row => row.list === "CRM").length;
       document.getElementById("summaryDocsList").textContent = period === "all" ? (list === "CRM" ? 0 : fullDocs) : rows.filter(row => row.list === "Docs").length;
     }
