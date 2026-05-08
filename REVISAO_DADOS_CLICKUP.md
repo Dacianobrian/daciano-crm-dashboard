@@ -4,9 +4,41 @@ Data da revisao: 2026-05-08
 
 ## Diagnostico principal
 
-O dashboard atual esta usando uma amostra pequena do ClickUp e, por isso, subconta a base. A lista principal `Daciano Brian - CRM M&C` retornou pelo menos 720 linhas antes de a paginacao do conector comecar a repetir resultados. A lista `Daciano Brian - Docs p/ Analise` tambem passou de 160 linhas na revisao.
+A primeira versao do dashboard estava usando uma amostra pequena do ClickUp e, por isso, subcontava a base. A lista principal `Daciano Brian - CRM M&C` retornou pelo menos 720 linhas antes de a paginacao do conector comecar a repetir resultados. A lista `Daciano Brian - Docs p/ Analise` tambem passou de 160 linhas na revisao.
 
-Conclusao: os totais globais do dashboard atual nao devem ser tratados como fechamento oficial ate reconstruirmos a extracao com IDs unicos e deduplicacao.
+Conclusao: o dashboard agora separa mes atual e snapshot revisado. Para fechamento oficial historico, ainda vale reconstruir a extracao por IDs unicos via API/exportacao do ClickUp.
+
+## Correcao aplicada em 2026-05-08
+
+O dashboard foi atualizado com duas leituras separadas:
+
+- Mes atual: 74 leads criados no CRM em maio/2026, puxados por data de criacao.
+- Snapshot CRM: 780 leads deduplicados no CRM principal antes de a paginacao do ClickUp voltar a repetir tarefas.
+
+Distribuicao do CRM no snapshot revisado:
+
+- `descartado`: 317
+- `base equipe inconformados`: 221
+- `analise documental concluida`: 133
+- `tentando 1 contato`: 45
+- `venda realizada`: 29
+- `standby`: 14
+- `sondagem`: 7
+- `aguardando docs`: 7
+- `simulacao enviada`: 4
+- `em analise de credito`: 2
+- `visita agendada`: 1
+
+Distribuicao de maio/2026 no CRM:
+
+- `tentando 1 contato`: 33
+- `descartado`: 21
+- `sondagem`: 5
+- `aguardando docs`: 5
+- `simulacao enviada`: 4
+- `base equipe inconformados`: 4
+- `em analise de credito`: 1
+- `analise documental concluida`: 1
 
 ## Listas revisadas
 

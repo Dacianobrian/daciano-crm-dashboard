@@ -424,7 +424,7 @@
     <header>
       <div>
         <h1>Dashboard CRM - Daciano Brian</h1>
-        <p class="subtitle">Leads do ClickUp CRM. Chamados conta os leads trabalhados no período, mesmo quando depois viraram descarte, docs ou análise.</p>
+        <p class="subtitle">Leads do ClickUp CRM. Mês mostra os leads criados em maio; snapshot mostra a base histórica deduplicada do CRM.</p>
       </div>
       <div class="filters">
         <label>
@@ -566,7 +566,7 @@
     </section>
 
     <footer>
-      Fonte: ClickUp, pasta M&amp;C - Daciano Brian. Snapshot revisado em 08/05/2026; os filtros consideram a data de atualização em America/Sao_Paulo. Para conversão histórica perfeita, o próximo passo é salvar snapshots diários por ID do lead.
+      Fonte: ClickUp, pasta M&amp;C - Daciano Brian. Revisado em 08/05/2026: mês baseado em leads criados em maio no CRM; snapshot baseado na base deduplicada antes da paginação do ClickUp repetir resultados. Para conversão histórica perfeita, o próximo passo é salvar snapshots diários por ID do lead.
     </footer>
   </main>
 
@@ -597,13 +597,30 @@
       { name: "Jean Fernandes", status: "analise documental concluida", list: "CRM", updated: "2026-05-07 23:35:06", assignee: "-", url: "https://app.clickup.com/t/86abdxru1" }
     ];
 
+    const MONTH_CRM_CREATED_TOTALS = {
+      "tentando 1 contato": 33,
+      "descartado": 21,
+      "sondagem": 5,
+      "aguardando docs": 5,
+      "simulacao enviada": 4,
+      "base equipe inconformados": 4,
+      "em analise de credito": 1,
+      "analise documental concluida": 1
+    };
+
     const STATUS_TOTALS = {
       CRM: {
-        "descartado": 73,
-        "analise documental concluida": 4,
-        "em analise de credito": 1,
-        "aguardando docs": 1,
-        "tentando 1 contato": 1
+        "descartado": 317,
+        "base equipe inconformados": 221,
+        "analise documental concluida": 133,
+        "tentando 1 contato": 45,
+        "venda realizada": 29,
+        "standby": 14,
+        "sondagem": 7,
+        "aguardando docs": 7,
+        "simulacao enviada": 4,
+        "em analise de credito": 2,
+        "visita agendada": 1
       },
       Docs: {
         "scr bacen": 43,
@@ -689,6 +706,7 @@
         });
         return totals;
       }
+      if (usesMonthlyCrmBase()) return { ...MONTH_CRM_CREATED_TOTALS };
       return rows.reduce((acc, row) => {
         acc[row.status] = (acc[row.status] || 0) + 1;
         return acc;
@@ -701,12 +719,23 @@
       }, 0);
     }
 
+    function sumCounts(counts) {
+      return Object.values(counts).reduce((sum, count) => sum + count, 0);
+    }
+
+    function usesMonthlyCrmBase() {
+      const period = document.getElementById("periodFilter").value;
+      const list = document.getElementById("listFilter").value;
+      return period === "month" && (list === "all" || list === "CRM");
+    }
+
     function totalForSelection(rows) {
       const period = document.getElementById("periodFilter").value;
       const list = document.getElementById("listFilter").value;
-      const fullCrm = Object.values(STATUS_TOTALS.CRM).reduce((sum, count) => sum + count, 0);
-      const fullDocs = Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
-      const fullSales = Object.values(STATUS_TOTALS.Vendas).reduce((sum, count) => sum + count, 0);
+      const fullCrm = sumCounts(STATUS_TOTALS.CRM);
+      const fullDocs = sumCounts(STATUS_TOTALS.Docs);
+      const fullSales = sumCounts(STATUS_TOTALS.Vendas);
+      if (usesMonthlyCrmBase()) return sumCounts(MONTH_CRM_CREATED_TOTALS);
       if (period !== "all") return rows.length;
       if (list === "CRM") return fullCrm;
       if (list === "Docs") return fullDocs;
@@ -717,9 +746,10 @@
     function docsListTotal(rows) {
       const period = document.getElementById("periodFilter").value;
       const list = document.getElementById("listFilter").value;
+      if (usesMonthlyCrmBase()) return 0;
       if (period === "all") {
         if (list === "CRM" || list === "Vendas") return 0;
-        return Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
+        return sumCounts(STATUS_TOTALS.Docs);
       }
       return rows.filter(row => row.list === "Docs").length;
     }
@@ -728,6 +758,9 @@
       const period = document.getElementById("periodFilter").value;
       const list = document.getElementById("listFilter").value;
       const isCreditStatus = status => status.includes("analise") || status.includes("scr bacen");
+      if (usesMonthlyCrmBase()) {
+        return countMatchingStatuses(MONTH_CRM_CREATED_TOTALS, isCreditStatus);
+      }
       if (period === "all") {
         if (list === "Docs" || list === "Vendas") return 0;
         return countMatchingStatuses(STATUS_TOTALS.CRM, isCreditStatus);
@@ -747,7 +780,12 @@
       const waitingDocs = countMatchingStatuses(counts, status => status.includes("docs") || status.includes("pendencia"));
       const credit = docsListTotal(rows) + crmAnalysisTotal(rows);
       const approved = countMatchingStatuses(counts, status => status.includes("aprovado"));
-      const sales = countMatchingStatuses(counts, status => status.includes("venda") || status.includes("recebido") || status.includes("nf"));
+      const sales = countMatchingStatuses(counts, status => (
+        status.includes("venda") ||
+        status.includes("recebido") ||
+        status.includes("nf gerada") ||
+        status.includes("nf parcial")
+      ));
       const discarded = countMatchingStatuses(counts, status => (
         status.includes("descartado") ||
         status.includes("reprovado") ||
@@ -810,14 +848,15 @@
     function renderSummary(rows) {
       const period = document.getElementById("periodFilter").value;
       const list = document.getElementById("listFilter").value;
-      const fullCrm = Object.values(STATUS_TOTALS.CRM).reduce((sum, count) => sum + count, 0);
-      const fullDocs = Object.values(STATUS_TOTALS.Docs).reduce((sum, count) => sum + count, 0);
-      const fullSales = Object.values(STATUS_TOTALS.Vendas).reduce((sum, count) => sum + count, 0);
+      const fullCrm = sumCounts(STATUS_TOTALS.CRM);
+      const monthCrm = sumCounts(MONTH_CRM_CREATED_TOTALS);
+      const fullDocs = sumCounts(STATUS_TOTALS.Docs);
+      const fullSales = sumCounts(STATUS_TOTALS.Vendas);
       const metrics = currentMetrics(rows);
       const periodLabels = {
         today: ["Movimentados hoje", "Descartados hoje"],
         week: ["Movimentados na semana", "Descartados na semana"],
-        month: ["Movimentados no mês", "Descartados no mês"],
+        month: ["Cadastrados no mês", "Descartados no mês"],
         all: ["Movimentados no snapshot", "Descartados no snapshot"]
       };
       document.getElementById("summaryPeriodLabel").textContent = periodLabels[period][0];
@@ -825,9 +864,9 @@
       document.getElementById("summaryTotal").textContent = metrics.total;
       document.getElementById("summaryToday").textContent = metrics.total;
       document.getElementById("summaryDiscarded").textContent = metrics.discarded;
-      document.getElementById("summaryCrm").textContent = period === "all" ? (list === "all" || list === "CRM" ? fullCrm : 0) : rows.filter(row => row.list === "CRM").length;
-      document.getElementById("summaryDocsList").textContent = period === "all" ? (list === "all" || list === "Docs" ? fullDocs : 0) : rows.filter(row => row.list === "Docs").length;
-      document.getElementById("summarySalesList").textContent = period === "all" ? (list === "all" || list === "Vendas" ? fullSales : 0) : rows.filter(row => row.list === "Vendas").length;
+      document.getElementById("summaryCrm").textContent = usesMonthlyCrmBase() ? monthCrm : (period === "all" ? (list === "all" || list === "CRM" ? fullCrm : 0) : rows.filter(row => row.list === "CRM").length);
+      document.getElementById("summaryDocsList").textContent = usesMonthlyCrmBase() ? 0 : (period === "all" ? (list === "all" || list === "Docs" ? fullDocs : 0) : rows.filter(row => row.list === "Docs").length);
+      document.getElementById("summarySalesList").textContent = usesMonthlyCrmBase() ? 0 : (period === "all" ? (list === "all" || list === "Vendas" ? fullSales : 0) : rows.filter(row => row.list === "Vendas").length);
     }
 
     function renderFunnel(rows) {
